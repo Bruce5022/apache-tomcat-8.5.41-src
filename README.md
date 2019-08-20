@@ -1,79 +1,196 @@
-## Welcome to Apache Tomcat!
+## Tomcat源码本地构建调试
 
-### What Is It?
+### 官网下载Tomcat源码
+[Tomcat源码下载](https://tomcat.apache.org/download-80.cgi)
 
-The Apache Tomcat® software is an open source implementation of the Java
-Servlet, JavaServer Pages, Java Expression Language and Java WebSocket
-technologies. The Java Servlet, JavaServer Pages, Java Expression Language and
-Java WebSocket specifications are developed under the
-[Java Community Process](https://jcp.org/en/introduction/overview).
 
-The Apache Tomcat software is developed in an open and participatory
-environment and released under the
-[Apache License version 2](https://www.apache.org/licenses/). The Apache Tomcat
-project is intended to be a collaboration of the best-of-breed developers from
-around the world. We invite you to participate in this open development
-project. To learn more about getting involved,
-[click here](https://tomcat.apache.org/getinvolved.html) or keep reading.
+### 构建和调试源码
+1.根目录下创建catalina-home,把根目录的catalina-home剪切到catalina-home目录中.
 
-Apache Tomcat software powers numerous large-scale, mission-critical web
-applications across a diverse range of industries and organizations. Some of
-these users and their stories are listed on the
-[PoweredBy wiki page](https://wiki.apache.org/tomcat/PoweredBy).
+2.在catalina-home目录下新建logs文件夹和temp文件夹.
 
-Apache Tomcat, Tomcat, Apache, the Apache feather, and the Apache Tomcat
-project logo are trademarks of the Apache Software Foundation.
+3.在根目录下新建pom.xml文件,内容如下.
+```
+<?xml version="1.0" encoding="UTF-8"?>
+<project xmlns="http://maven.apache.org/POM/4.0.0"
+         xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+         xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 http://maven.apache.org/xsd/maven-4.0.0.xsd">
 
-### Get It
+    <modelVersion>4.0.0</modelVersion>
+    <groupId>org.apache.tomcat</groupId>
+    <artifactId>apache-tomcat-8.5.43</artifactId>
+    <name>apache-tomcat-8.5.43</name>
+    <version>8.5.43</version>
 
-For every major Tomcat version there is one download page containing
-links to the latest binary and source code downloads, but also
-links for browsing the download directories and archives:
-- [Tomcat 9](https://tomcat.apache.org/download-90.cgi)
-- [Tomcat 8](https://tomcat.apache.org/download-80.cgi)
-- [Tomcat 7](https://tomcat.apache.org/download-70.cgi)
+    <build>
+        <finalName>apache-tomcat-8.5.43</finalName>
+        <sourceDirectory>java</sourceDirectory>
+        <testSourceDirectory>test</testSourceDirectory>
+        <resources>
+            <resource>
+                <directory>java</directory>
+            </resource>
+        </resources>
+        <testResources>
+            <testResource>
+                <directory>test</directory>
+            </testResource>
+        </testResources>
+        <plugins>
+            <plugin>
+                <groupId>org.apache.maven.plugins</groupId>
+                <artifactId>maven-compiler-plugin</artifactId>
+                <version>2.3</version>
+                <configuration>
+                    <encoding>UTF-8</encoding>
+                    <source>1.8</source>
+                    <target>1.8</target>
+                </configuration>
+            </plugin>
+        </plugins>
+    </build>
 
-To facilitate choosing the right major Tomcat version one, we have provided a
-[version overview page](https://tomcat.apache.org/whichversion.html).
+    <dependencies>
+        <dependency>
+            <groupId>junit</groupId>
+            <artifactId>junit</artifactId>
+            <version>4.12</version>
+            <scope>test</scope>
+        </dependency>
+        <dependency>
+            <groupId>org.easymock</groupId>
+            <artifactId>easymock</artifactId>
+            <version>3.4</version>
+        </dependency>
+        <dependency>
+            <groupId>ant</groupId>
+            <artifactId>ant</artifactId>
+            <version>1.7.0</version>
+        </dependency>
+        <dependency>
+            <groupId>wsdl4j</groupId>
+            <artifactId>wsdl4j</artifactId>
+            <version>1.6.2</version>
+        </dependency>
+        <dependency>
+            <groupId>javax.xml</groupId>
+            <artifactId>jaxrpc</artifactId>
+            <version>1.1</version>
+        </dependency>
+        <dependency>
+            <groupId>org.eclipse.jdt.core.compiler</groupId>
+            <artifactId>ecj</artifactId>
+            <version>4.5.1</version>
+        </dependency>
 
-### Documentation
+    </dependencies>
+</project>
+```
 
-The documentation available as of the date of this release is
-included in the docs webapp which ships with tomcat. You can access that webapp
-by starting tomcat and visiting http://localhost:8080/docs/ in your browser.
-The most up-to-date documentation for each version can be found at:
-- [Tomcat 9](https://tomcat.apache.org/tomcat-9.0-doc/)
-- [Tomcat 8](https://tomcat.apache.org/tomcat-8.5-doc/)
-- [Tomcat 7](https://tomcat.apache.org/tomcat-7.0-doc/)
+4.源码中的CookieFilter类丢失导致报错，贴入这个类代码到test/util包中.
+```
+/*
+ * Licensed to the Apache Software Foundation (ASF) under one or more
+ * contributor license agreements.  See the NOTICE file distributed with
+ * this work for additional information regarding copyright ownership.
+ * The ASF licenses this file to You under the Apache License, Version 2.0
+ * (the "License"); you may not use this file except in compliance with
+ * the License.  You may obtain a copy of the License at
+ *
+ *     http://www.apache.org/licenses/LICENSE-2.0
+ *
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an "AS IS" BASIS,
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ * See the License for the specific language governing permissions and
+ * limitations under the License.
+ */
+package util;
 
-### Installation
+import java.util.Locale;
+import java.util.StringTokenizer;
 
-Please see [RUNNING.txt](RUNNING.txt) for more info.
+/**
+ * Processes a cookie header and attempts to obfuscate any cookie values that
+ * represent session IDs from other web applications. Since session cookie names
+ * are configurable, as are session ID lengths, this filter is not expected to
+ * be 100% effective.
+ *
+ * It is required that the examples web application is removed in security
+ * conscious environments as documented in the Security How-To. This filter is
+ * intended to reduce the impact of failing to follow that advice. A failure by
+ * this filter to obfuscate a session ID or similar value is not a security
+ * vulnerability. In such instances the vulnerability is the failure to remove
+ * the examples web application.
+ */
+public class CookieFilter {
 
-### Licensing
+    private static final String OBFUSCATED = "[obfuscated]";
 
-Please see [LICENSE](LICENSE) for more info.
+    private CookieFilter() {
+        // Hide default constructor
+    }
 
-### Support and Mailing List Information
+    public static String filter(String cookieHeader, String sessionId) {
 
-* Free community support is available through the
-[tomcat-users](https://tomcat.apache.org/lists.html#tomcat-users) email list and
-a dedicated [IRC channel](https://tomcat.apache.org/irc.html) (#tomcat on
-Freenode).
+        StringBuilder sb = new StringBuilder(cookieHeader.length());
 
-* If you want freely available support for running Apache Tomcat, please see the
-resources page [here](https://tomcat.apache.org/findhelp.html).
+        // Cookie name value pairs are ';' separated.
+        // Session IDs don't use ; in the value so don't worry about quoted
+        // values that contain ;
+        StringTokenizer st = new StringTokenizer(cookieHeader, ";");
 
-* If you want to be informed about new code releases, bug fixes,
-security fixes, general news and information about Apache Tomcat, please
-subscribe to the
-[tomcat-announce](https://tomcat.apache.org/lists.html#tomcat-announce) email
-list.
+        boolean first = true;
+        while (st.hasMoreTokens()) {
+            if (first) {
+                first = false;
+            } else {
+                sb.append(';');
+            }
+            sb.append(filterNameValuePair(st.nextToken(), sessionId));
+        }
 
-* If you have a concrete bug report for Apache Tomcat, please see the
-instructions for reporting a bug
-[here](https://tomcat.apache.org/bugreport.html).
 
-### Contributing
+        return sb.toString();
+    }
 
-Please see [CONTRIBUTING](CONTRIBUTING.md) for more info.
+    private static String filterNameValuePair(String input, String sessionId) {
+        int i = input.indexOf('=');
+        if (i == -1) {
+            return input;
+        }
+        String name = input.substring(0, i);
+        String value = input.substring(i + 1, input.length());
+
+        return name + "=" + filter(name, value, sessionId);
+    }
+
+    public static String filter(String cookieName, String cookieValue, String sessionId) {
+        if (cookieName.toLowerCase(Locale.ENGLISH).contains("jsessionid") &&
+                (sessionId == null || !cookieValue.contains(sessionId))) {
+            cookieValue = OBFUSCATED;
+        }
+
+        return cookieValue;
+    }
+}
+```
+
+5.启动参数中增加选项.
+```
+-Dcatalina.home=catalina-home
+-Dcatalina.base=catalina-home
+-Djava.endorsed.dirs=catalina-home/endorsed
+-Djava.io.tmpdir=catalina-home/temp
+-Djava.util.logging.manager=org.apache.juli.ClassLoaderLogManager
+-Djava.util.logging.config.file=catalina-home/conf/logging.properties
+```
+
+6.启动tomcat报错JasperException问题处理
+原因：启动org.apache.catalina.startup.Bootstrap的时候没有加载org.apache.jasper.servlet.JasperInitializer，
+从而无法编译JSP。解决办法是在tomcat的源码org.apache.catalina.startup.ContextConfig中手动将JSP解析器初始化.
+```
+context.addServletContainerInitializer(new JasperInitializer(), null);
+```
+
+7.再次启动访问http://localhost:8080/显示Tomcat主页就成功了.
